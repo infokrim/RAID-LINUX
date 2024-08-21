@@ -110,5 +110,196 @@ mdadm --version
 
 ![C7_endinstandvers](https://github.com/user-attachments/assets/35420f1c-5534-4792-9ada-9144d773c278)
 
+### Création du RAID 1 avec `mdadm`
 
+J'ai utilisé l'outil `mdadm` pour créer un RAID 1 avec les partitions `/dev/sdb1` et `/dev/sdc1`. La commande suivante a été utilisée :
+
+```bash
+mdadm --create /dev/md0 --level=1 --raid-devices=2 /dev/sdb1 /dev/sdc1
+```
+
+Cette commande a configuré un RAID 1 sur le périphérique /dev/md0, utilisant les deux partitions spécifiées.   
+
+Vérification de l'état du RAID 1
+
+Pour vérifier que le RAID 1 a été correctement créé et qu'il est en état "clean", j'ai utilisé la commande suivante :
+
+
+```bash
+cat /proc/mdstat
+```
+
+- **Capture d'écran** :
+
+![C8_raid1crandver](https://github.com/user-attachments/assets/8f134d0c-1eab-49c4-acdb-464f7d3a3c98)    
+
+**Explication des résultats** :
+
+Le RAID 1 est bien actif (md0 : active raid1).
+Les deux partitions, /dev/sdc1 et /dev/sdb1, sont correctement intégrées au RAID 1.
+Le statut [UU] indique que les deux disques sont synchronisés et en bon état (Up).
+Le processus de resynchronisation (resync) est visible, et une fois terminé, le RAID sera complètement opérationnel.
+
+**Détails du RAID 1** :    
+
+Pour obtenir plus de détails sur le RAID que je viens de créer, j'ai utilisé la commande suivante :   
+
+```bash
+mdadm --detail /dev/md0
+```
+
+![C9_detailraid](https://github.com/user-attachments/assets/030972c8-4053-4c3b-abcc-19def7d42715)
+
+
+**Explication des résultats affichés** :  
+
+- Version : Le RAID est configuré avec la version 1.2 du superblock de mdadm.
+- Creation Time : Le RAID a été créé à la date et heure indiquées.
+- Raid Level : Le RAID est de type 1 (mirroring).
+- Array Size : La taille totale du RAID est de 4.99 GiB, correspondant à la -taille d'un des disques (car dans un RAID 1, la taille totale est égale à la taille du plus petit disque).
+- State : Le RAID est en état "clean", signifiant qu'il est opérationnel et que les disques sont synchronisés.
+- Active Devices : Les deux disques sont actifs et synchronisés (active sync pour /dev/sdb1 et /dev/sdc1).
+- UUID : Un UUID unique a été attribué au RAID pour son identification
+
+**Conclusion**
+Le RAID 1 a été créé avec succès, et les deux disques sont correctement synchronisés. Le RAID est maintenant opérationnel et prêt à être utilisé pour la sauvegarde des données.
+
+Prochaine étape : Le RAID 1 étant fonctionnel, nous passerons à son formatage et à son montage sur le système de fichiers.
+
+### Formatage et montage du RAID 1
+
+#### Formatage du RAID 1
+
+Pour pouvoir utiliser le RAID 1, j'ai d'abord formaté le périphérique RAID `/dev/md0` avec le système de fichiers `ext4` :
+
+```bash
+mkfs.ext4 /dev/md0 -L "RAID1_Data"
+```
+
+Explication :
+
+- mkfs.ext4 : Cette commande formate le périphérique avec le système de fichiers ext4.
+- /dev/md0 : C'est le périphérique RAID que nous venons de créer.
+- -L "RAID1_Data" : Ce paramètre attribue un label (nom) au système de fichiers, ici "RAID1_Data".
+
+#### Création d'un point de montage
+
+Commande pour créer le répertoire de montage :
+
+```bash
+mkdir /mnt/raid1
+```
+Explication :
+
+- mkdir : Cette commande crée un nouveau répertoire.
+- /mnt/raid1 : C'est le chemin du répertoire que nous créons pour monter le RAID.
+
+#### Montage du RAID 1
+
+```bash
+mount /dev/md0 /mnt/raid1
+```
+Explication :
+
+- mount : Cette commande monte le système de fichiers sur un répertoire.
+- /dev/md0 : Le périphérique RAID que nous avons formaté.
+- /mnt/raid1 : Le répertoire où nous montons le RAID.
+
+#### Vérification du montage
+
+```bash
+mount /dev/md0 /mnt/raid1
+```
+Explication :
+
+- df -h : Cette commande affiche la liste des systèmes de fichiers montés avec leur espace utilisé et disponible en format lisible (human-readable).
+
+Voici une copie d'écran de toutes les commandes utilisées :
+
+![C10_montageraid1](https://github.com/user-attachments/assets/ff51c257-ef95-4fc7-9eb2-bab66fc46423)  
+
+## Étape 3 : Simulation d'une panne et reconstruction du RAID 1
+
+Dans cette étape, nous allons simuler une panne d'un des disques du RAID 1 et observer comment le RAID réagit. Ensuite, nous allons reconstruire le RAID en remplaçant le disque défaillant.
+
+#### Simuler la panne d'un disque
+
+Nous allons marquer l'un des disques comme défaillant pour simuler une panne.
+
+Commande pour marquer un disque comme défaillant :
+
+```bash
+mdadm --manage /dev/md0 --fail /dev/sdb1
+```
+**Explication** :
+
+- mdadm --manage : Cette commande permet de gérer un ensemble RAID existant.
+- --fail /dev/sdb1 : Marque la partition /dev/sdb1 comme défaillante dans l'ensemble RAID /dev/md0.
+
+
+Vérification de l'état après la panne en tapant la commande :
+
+```bash
+cat /proc/mdstat
+```
+Voici la réponse à la commande : 
+
+```bash
+root@karim-VirtualBox:/home/karim# cat /proc/mdstat
+Personalities : [raid1]
+md0 : active raid1 sdc1[1] sdb1[0](F)
+      5236736 blocks super 1.2 [2/1] [_U]
+
+unused devices: <none>
+root@karim-VirtualBox:/home/karim# 
+```
+**Explication réponse** :   
+
+md0 : active raid1 sdc1[1] sdb1[0](F)
+
+- sdb1[0](F) indique que la partition /dev/sdb1 est considérée comme défaillante (F pour "faulty").
+- Le RAID continue de fonctionner en mode dégradé avec la seule partition active restante, /dev/sdc1.
+
+J'ai ensuite retiré le disque défaillant du RAID avec la commande suivante : 
+
+```bash
+mdadm --manage /dev/md0 --remove /dev/sdb1
+```
+Voici la réponse à la commande : 
+
+```bash
+root@karim-VirtualBox:/home/karim# mdadm --manage /dev/md0 --remove /dev/sdb1
+mdadm: hot removed /dev/sdb1 from /dev/md0
+root@karim-VirtualBox:/home/karim# 
+```
+Résultat : Le disque /dev/sdb1 a été retiré du RAID, comme confirmé par le message hot removed /dev/sdb1 from /dev/md0.
+
+Ajouter un nouveau disque au RAID
+Pour remplacer le disque défaillant, j'ai ajouté la même partition au RAID après l'avoir "réparée" :
+
+```bash
+mdadm --manage /dev/md0 --add /dev/sdb1
+```
+Résultat : Le disque /dev/sdb1 a été ajouté au RAID, et la reconstruction a commencé automatiquement. Voici la sortie de cat /proc/mdstat montrant l'état de la reconstruction :  
+
+```bash
+root@karim-VirtualBox:/home/karim# cat /proc/mdstat
+Personalities : [raid1]
+md0 : active raid1 sdb1[2] sdc1[1]
+      5236736 blocks super 1.2 [2/1] [_U]
+      [========>............]  recovery = 44.5% (2335552/5236736) finish=0.5min speed=83412K/sec
+
+unused devices: <none>
+root@karim-VirtualBox:/home/karim# 
+```
+
+Vérification de la reconstruction
+La reconstruction du RAID est en cours avec un taux d'avancement de 44,5 %. Une fois la reconstruction terminée, le RAID sera de nouveau en état "clean".  
+
+Capture d'écran des commandes et sorties de commande :
+
+![C12_failandrepair](https://github.com/user-attachments/assets/f7ad8c1f-0244-4121-acfc-3c86d4b5c1dd)   
+
+
+**Vérification finale** : La reconstruction du RAID est terminée, et le RAID est de nouveau en état "clean", avec les deux disques actifs et synchronisés ([UU]).
 
