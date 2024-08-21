@@ -303,3 +303,70 @@ Capture d'écran des commandes et sorties de commande :
 
 **Vérification finale** : La reconstruction du RAID est terminée, et le RAID est de nouveau en état "clean", avec les deux disques actifs et synchronisés ([UU]).
 
+### Création du RAID 5
+
+#### Démontage et arrêt du RAID 1
+
+Pour libérer les partitions utilisées dans le RAID 1 et les utiliser pour créer un RAID 5, j'ai d'abord démonté le système de fichiers monté sur `/mnt/raid1` :
+
+```bash
+umount /mnt/raid1
+```
+Ensuite, j'ai arrêté le RAID 1 existant avec la commande suivante : 
+
+```bash
+mdadm --stop /dev/md0
+```
+
+**Création du RAID 5** : 
+
+J'ai ensuite créé un RAID 5 en utilisant les trois partitions (/dev/sdb1, /dev/sdc1, et /dev/sdd1) avec la commande suivante : 
+
+```bash
+mdadm --create /dev/md0 --level=5 --raid-devices=3 /dev/sdb1 /dev/sdc1 /dev/sdd1
+```
+Capture d'écran des commandes et sorties de commande :  
+
+![C15_creerraid5](https://github.com/user-attachments/assets/e144cdd1-1aba-4c80-87a5-711d168ec881)
+
+### Formatage et montage du RAID 5
+
+#### Formatage du RAID 5
+
+J'ai formaté le périphérique RAID 5 `/dev/md0` avec le système de fichiers `ext4` et lui ai attribué le label "RAID5_Data" :
+
+```bash
+mkfs.ext4 /dev/md0 -L "RAID5_Data"
+```
+**Création d'un point de montage**
+
+J'ai créé un répertoire où monter le RAID 5 :
+
+```bash
+mkdir /mnt/raid5
+```
+
+#### Montage du RAID 5
+
+Le RAID 5 a été monté sur le répertoire /mnt/raid5 avec la commande suivante :  
+
+```bash
+mount /dev/md0 /mnt/raid5
+```
+
+**Vérification du montage**
+
+Pour vérifier que le RAID 5 a été monté correctement, j'ai utilisé la commande `df -h`.   
+
+Capture d'écran de toute la manipulation :   
+
+![C15_end](https://github.com/user-attachments/assets/3b743a9e-a370-4ea8-9653-cb7442f24d6e)   
+
+
+
+
+
+
+
+
+
