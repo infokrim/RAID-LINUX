@@ -1,4 +1,21 @@
 # RAID-LINUX
+---
+## 💪 Challenge
+
+Dans un premier temps, exécute les différentes actions de cette quête :
+
+- Créer un RAID 1 avec 2 disques
+- Reconstruire le RAID après une simulation de panne
+
+Une fois que tout est fonctionnel, répétez l'opération, mais cette fois-ci avec un autre type de RAID, comme le RAID 5 par exemple.
+
+## 🧐 Critères d'acceptation
+
+- Création d'un RAID 1 fonctionnel
+- Création d'un autre type de RAID fonctionnel
+---
+
+
 # Solution : Configuration RAID sous Linux
 
 ## Étape 1 : Installation d'Ubuntu sur VirtualBox
@@ -358,15 +375,71 @@ mount /dev/md0 /mnt/raid5
 
 Pour vérifier que le RAID 5 a été monté correctement, j'ai utilisé la commande `df -h`.   
 
-Capture d'écran de toute la manipulation :   
+**Capture d'écran de toute la manipulation** :   
 
 ![C15_end](https://github.com/user-attachments/assets/3b743a9e-a370-4ea8-9653-cb7442f24d6e)   
 
+**Vérification état du RAID5** : 
+# Vérification de l'état du RAID 5
+
+```bash
+mdadm --detail /dev/md0
+```
+![C16_verifraid5](https://github.com/user-attachments/assets/5fdb115c-36c3-4034-923f-b039deb306d3)
 
 
+**Voici un historique amélioré des commandes utilisées pour le challenge** : 
 
+```bash
+# Vérification des disques disponibles
+lsblk
 
+# Création du RAID 1 avec deux disques
+mdadm --create --verbose /dev/md0 --level=1 --raid-devices=2 /dev/sdb /dev/sdc
 
+# Vérification de l'état du RAID 1
+cat /proc/mdstat
+mdadm --detail /dev/md0
 
+# Création du fichier de configuration mdadm
+mdadm --detail --scan | tee -a /etc/mdadm/mdadm.conf
+update-initramfs -u
 
+# Simulation de panne d'un disque
+mdadm /dev/md0 --fail /dev/sdb
+
+# Vérification de l'état après la simulation de panne
+cat /proc/mdstat
+mdadm --detail /dev/md0
+
+# Retrait du disque défaillant
+mdadm /dev/md0 --remove /dev/sdb
+
+# Ajout d'un nouveau disque pour la reconstruction du RAID
+mdadm /dev/md0 --add /dev/sdd
+
+# Vérification de l'état pendant la reconstruction
+cat /proc/mdstat
+mdadm --detail /dev/md0
+
+# Suppression du RAID 1 pour préparer la création du RAID 5
+mdadm --stop /dev/md0
+mdadm --remove /dev/md0
+
+# Création du RAID 5 avec trois disques
+mdadm --create --verbose /dev/md0 --level=5 --raid-devices=3 /dev/sdb /dev/sdc /dev/sdd
+
+# Vérification de l'état du RAID 5
+cat /proc/mdstat
+mdadm --detail /dev/md0
+
+# Création du fichier de configuration mdadm pour le RAID 5
+mdadm --detail --scan | tee -a /etc/mdadm/mdadm.conf
+update-initramfs -u
+
+# Historique des commandes
+history
+
+```
+![image](https://github.com/user-attachments/assets/bddb5cce-1cb3-4db8-b332-471118a377cc)
 
